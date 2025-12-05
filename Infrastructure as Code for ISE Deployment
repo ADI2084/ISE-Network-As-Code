@@ -1,0 +1,21 @@
+Key IaC Tools for ISE
+Terraform
+AWS Deployment: CiscoISE/ciscoise-terraform-automation-aws-nodes
+Azure Deployment: CiscoISE/ciscoise-terraform-automation-azure-nodes
+Capabilities: Deploy up to 58 ISE nodes (min: 2, max: 58) automatically
+Network as Code Module: netascode/terraform-ise-nac-ise
+Ansible
+Official Collection: CiscoISE/ansible-ise
+Compatibility: ISE 3.1+, 3.2, 3.3, 3.4, 3.5
+SDK Requirement: ciscoisesdk Python library
+Key Features:
+Policy automation
+Configuration management
+Zero-touch provisioning
+Lifecycle orchestration
+IaC Prerequisites
+Cloud Subscriptions (if deploying to cloud):
+
+Subscribe to Cisco ISE in AWS/Azure Marketplace
+Create IAM user with appropriate permissions
+Generate access keys for programmatic access
