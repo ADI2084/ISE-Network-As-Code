@@ -35,6 +35,320 @@ aws configure
 ISE API Prerequisites:
 
 Enable ERS (External RESTful Services) API
+
+
+
+
 Enable OpenAPI
 Enable API Gateway
 Configure admin credentials with API access
+
+4.3 Lab Environment
+
+Cisco ISE (3.x recommended) with:
+
+Valid licenses
+
+Reachable API/GUI
+
+Cisco Catalyst Center:
+
+API access enabled
+
+Credentials for an API user
+
+Catalyst switches / controllers registered to Catalyst Center
+
+5. Terraform Structure
+
+Root files:
+
+terraform/main.tf – calls modules for ISE, SGTs, Catalyst Center
+
+terraform/provider.tf – providers (REST/API, custom providers, etc.)
+
+terraform/variables.tf – inputs for ISE/Catalyst Center endpoints and credentials
+
+terraform/modules/ – separated modules
+
+5.1 Sample provider.tf (pseudo-provider example)
+
+Replace this with the actual provider(s) you choose (REST provider, HTTP provider, custom Cisco ISE/CC provider, etc.).
+
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
+  }
+}
+
+variable "ise_base_url" {}
+variable "ise_username" {}
+variable "ise_password" {
+  sensitive = true
+}
+
+provider "http" {
+  # HTTP provider used to call ISE/CC APIs if no native provider exists.
+}
+
+5.2 Sample main.tf (root)
+module "ise" {
+  source       = "./modules/ise"
+  ise_base_url = var.ise_base_url
+  username     = var.ise_username
+  password     = var.ise_password
+}
+
+module "sgt" {
+  source       = "./modules/sgt"
+  ise_base_url = var.ise_base_url
+  username     = var.ise_username
+  password     = var.ise_password
+
+  sgts = [
+    {
+      name        = "Employees"
+      description = "Corporate user devices"
+      value       = 10
+    },
+    {
+      name        = "Contractors"
+      description = "Third-party contractors"
+      value       = 20
+    }
+  ]
+}
+
+module "catalyst_center" {
+  source             = "./modules/catalyst_center"
+  dnac_base_url      = var.dnac_base_url
+  dnac_username      = var.dnac_username
+  dnac_password      = var.dnac_password
+  ise_pxgrid_node    = module.ise.pxgrid_fqdn
+  ise_sgt_list       = module.sgt.sgts
+}
+
+6. Ansible Structure
+
+ansible/inventory/hosts.yml
+
+ansible/roles/
+
+ise-pxgrid/ – enable and configure pxGrid
+
+ise-sgt/ – create/update SGTs
+
+catalyst-center-sgt/ – sync SGTs/policies in Catalyst Center
+
+catalyst-center-nad-provisioning/ – attach NADs to ISE as AAA clients via CC
+
+6.1 Sample inventory/hosts.yml
+all:
+  children:
+    ise:
+      hosts:
+        ise-pan.lab.local:
+          ansible_host: 10.10.10.10
+    catalyst_center:
+      hosts:
+        dnac.lab.local:
+          ansible_host: 10.10.20.20
+
+6.2 group_vars/ise.yml (example)
+ise_base_url: "https://ise-pan.lab.local"
+ise_username: "admin"
+ise_password: "CHANGE_ME"
+ise_verify_ssl: false
+
+6.3 group_vars/catalyst_center.yml (example)
+dnac_base_url: "https://dnac.lab.local"
+dnac_username: "admin"
+dnac_password: "CHANGE_ME"
+dnac_verify_ssl: false
+
+7. Example Ansible Playbooks
+7.1 Enable & Configure pxGrid (01-configure-ise-pxgrid.yml)
+---
+- name: Configure Cisco ISE pxGrid
+  hosts: ise
+  gather_facts: no
+  collections:
+    - cisco.ise
+
+  roles:
+    - ise-pxgrid
+
+
+Inside roles/ise-pxgrid/tasks/main.yml you would:
+
+Enable pxGrid services
+
+Create pxGrid certificates / nodes
+
+Optionally register Catalyst Center as a pxGrid client (if supported via API)
+
+7.2 Create SGTs on ISE (02-push-sgts-to-ise.yml)
+---
+- name: Create SGTs on Cisco ISE
+  hosts: ise
+  gather_facts: no
+  collections:
+    - cisco.ise
+
+  roles:
+    - ise-sgt
+
+
+roles/ise-sgt/tasks/main.yml would:
+
+Read a list of SGTs from a vars file or Terraform output (terraform output -json)
+
+Idempotently create/update SGTs using the cisco.ise collection modules
+
+7.3 Sync SGTs with Catalyst Center (03-sync-sgts-with-catalyst-center.yml)
+---
+- name: Sync SGTs with Catalyst Center
+  hosts: catalyst_center
+  gather_facts: no
+  collections:
+    - cisco.dnac
+
+  roles:
+    - catalyst-center-sgt
+
+
+This role can:
+
+Import SGTs from ISE to Catalyst Center (if API supports it)
+
+Map SGTs to Scalable Groups / Virtual Networks / Fabric
+
+8. Example Workflow (End-to-End)
+
+Prepare Environment
+
+Spin up ISE, Catalyst Center, and lab switches
+
+Confirm API access
+
+Terraform Phase
+
+Define SGTs and basic ISE/CC objects in Terraform (terraform/)
+
+Run:
+
+cd terraform
+terraform init
+terraform plan -var-file=../examples/example-vars-terraform.tfvars
+terraform apply -var-file=../examples/example-vars-terraform.tfvars
+
+
+Ansible Phase
+
+Configure pxGrid on ISE:
+
+cd ../ansible
+ansible-playbook -i inventory/hosts.yml playbooks/01-configure-ise-pxgrid.yml
+
+
+Push SGTs:
+
+ansible-playbook -i inventory/hosts.yml playbooks/02-push-sgts-to-ise.yml
+
+
+Sync with Catalyst Center:
+
+ansible-playbook -i inventory/hosts.yml playbooks/03-sync-sgts-with-catalyst-center.yml
+
+
+Validation
+
+Verify SGTs in ISE
+
+Verify that Catalyst Center sees SGTs / context via pxGrid
+
+Test traffic between endpoints to confirm correct policy enforcement
+
+9. Deep Research Notes
+
+The docs/ folder is where all the “deep research session” material lives:
+
+02-ise-pxgrid-sgt-deep-dive.md – internal workings, API endpoints, limitations
+
+03-catalyst-center-integration.md – how Catalyst Center talks to ISE, pxGrid client behavior
+
+04-terraform-design-notes.md – pros/cons of different providers or HTTP-based approaches
+
+05-ansible-design-notes.md – module coverage, idempotency strategies, error handling
+
+Use these files to capture:
+
+Command/API references
+
+Design decisions
+
+Troubleshooting notes
+
+“Future ideas” section (e.g., GitHub Actions CI, unit tests, etc.)
+
+10. Security & Compliance
+
+Do not store real passwords, tokens, or certificates in this repo.
+
+Use:
+
+ansible-vault for sensitive Ansible vars
+
+Environment variables or secret managers for Terraform credentials
+
+Sanitize any logs or outputs before committing.
+
+11. Roadmap / Ideas
+
+ Add example pxGrid subscription flows
+
+ Integrate with Catalyst Center templates for SGT-based policies
+
+ Build GitHub Actions pipeline to:
+
+Run terraform validate + tflint
+
+Run ansible-lint on playbooks
+
+ Add full lab guide under examples/example-lab-run.md
+
+ Add unit-style tests for Ansible roles (e.g., Molecule)
+
+12. License
+
+Choose a license that matches how you want this content to be used (e.g., MIT, Apache 2.0) and update the LICENSE file accordingly.
+
+
+---
+
+## 4. `.gitignore` (simple starter)
+
+```gitignore
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+*.tfvars
+*.tfvars.json
+
+# Ansible
+*.retry
+ansible/*.vault
+
+# Python
+__pycache__/
+*.pyc
+
+# MacOS
+.DS_Store
