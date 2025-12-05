@@ -19,3 +19,22 @@ Cloud Subscriptions (if deploying to cloud):
 Subscribe to Cisco ISE in AWS/Azure Marketplace
 Create IAM user with appropriate permissions
 Generate access keys for programmatic access
+
+Tools Installation:
+# Terraform
+terraform >= 1.5.0
+
+# Ansible
+ansible >= 2.9
+pip install ciscoisesdk
+
+# AWS CLI
+aws configure
+
+
+ISE API Prerequisites:
+
+Enable ERS (External RESTful Services) API
+Enable OpenAPI
+Enable API Gateway
+Configure admin credentials with API access
