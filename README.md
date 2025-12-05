@@ -1,6 +1,6 @@
 # Terraform & Ansible Deep Dive: Cisco ISE + pxGrid + SGT + Catalyst Center
 
-This repository is a **deep research + lab project** focused on using **Terraform** and **Ansible** to automate:
+This repository is a focused on using **Terraform** and **Ansible** to automate:
 
 - Cisco ISE deployment & configuration (with pxGrid)
 - Security Group Tags (SGTs) & policies
