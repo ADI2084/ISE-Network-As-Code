@@ -1,0 +1,62 @@
+terraform-ansible-cisco-ise-pxgrid-sgt-catalyst-center/
+├── README.md
+├── LICENSE
+├── .gitignore
+├── docs/
+│   ├── 01-architecture-overview.md
+│   ├── 02-ise-pxgrid-sgt-deep-dive.md
+│   ├── 03-catalyst-center-integration.md
+│   ├── 04-terraform-design-notes.md
+│   ├── 05-ansible-design-notes.md
+│   └── diagrams/
+│       ├── logical-topology.drawio
+│       └── workflow-pxgrid-sgt.png
+├── lab-topology/
+│   ├── lab-topology.md
+│   └── ip-plan.csv
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── provider.tf
+│   └── modules/
+│       ├── ise/
+│       │   ├── main.tf
+│       │   ├── variables.tf
+│       │   └── outputs.tf
+│       ├── sgt/
+│       │   ├── main.tf
+│       │   ├── variables.tf
+│       │   └── outputs.tf
+│       └── catalyst_center/
+│           ├── main.tf
+│           ├── variables.tf
+│           └── outputs.tf
+├── ansible/
+│   ├── inventory/
+│   │   ├── hosts.yml
+│   │   └── group_vars/
+│   │       ├── ise.yml
+│   │       └── catalyst_center.yml
+│   ├── roles/
+│   │   ├── ise-pxgrid/
+│   │   │   ├── tasks/
+│   │   │   │   └── main.yml
+│   │   │   └── templates/
+│   │   ├── ise-sgt/
+│   │   │   └── tasks/
+│   │   │       └── main.yml
+│   │   ├── catalyst-center-sgt/
+│   │   │   └── tasks/
+│   │   │       └── main.yml
+│   │   └── catalyst-center-nad-provisioning/
+│   │       └── tasks/
+│   │           └── main.yml
+│   ├── playbooks/
+│   │   ├── 01-configure-ise-pxgrid.yml
+│   │   ├── 02-push-sgts-to-ise.yml
+│   │   └── 03-sync-sgts-with-catalyst-center.yml
+│   └── collections/  # (optional if you vendor Cisco collections)
+└── examples/
+    ├── example-vars-terraform.tfvars
+    └── example-lab-run.md
